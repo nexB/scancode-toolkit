@@ -22,6 +22,15 @@ Notable changes:
  - Fix minor bugs
  - Add Dockerfile to build docker image from ScanCode sources #2265
 
+v3.2.3 (2020-10-27)
+-------------------
+
+Notable changes:
+
+ - Collect Windows executable metadata #652
+ - Fix minor bugs
+ - Add Dockerfile to build docker image from ScanCode sources #2265
+
 
 v3.2.2rc3 (2020-09-21)
 ----------------------
