@@ -88,6 +88,7 @@ def build_summary(resource, children, attribute, summarizer, keep_details=False)
     if values:
         # keep current data as plain strings
         candidate_texts = [entry.get('value') for entry in values]
+
     else:
         candidate_texts = []
         if resource.is_file:
