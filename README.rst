@@ -113,6 +113,9 @@ Before installing ScanCode make sure that you have installed the prerequisites
 properly. This means installing Python (Python 3.6+ is required).
 See `prerequisites <https://scancode-toolkit.readthedocs.io/en/latest/getting-started/install.html#prerequisites>`_
 for detailed information on the support platforms and Python versions.
+Note: Native Windows will be deprecated in the future in favor of Windows
+Subsystem for Linux (WSL): WSL and Windows 10 will become a
+requirement on Windows.
 
 There are a few common ways to `install ScanCode <https://scancode-toolkit.readthedocs.io/en/latest/getting-started/install.html>`_.
 
@@ -161,7 +164,7 @@ and an exhaustive list of `all available command line options
 Archive extraction
 ==================
 
-By default ScanCode does not extract files from tarballs, zip files, and
+By default, ScanCode does not extract files from tarballs, zip files, and
 other archives as part of the scan. The archives that exist in a codebase
 must be extracted before running a scan: `extractcode` is a bundled utility
 behaving as a mostly-universal archive extractor. For example, this command will
