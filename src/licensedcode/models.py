@@ -12,6 +12,7 @@ import sys
 import traceback
 from collections import Counter
 from collections import defaultdict
+from collections import OrderedDict
 from hashlib import sha1
 from itertools import chain
 from operator import itemgetter
@@ -37,12 +38,8 @@ from licensedcode import SMALL_RULE
 from licensedcode.frontmatter import dumps_frontmatter
 from licensedcode.frontmatter import load_frontmatter
 from licensedcode.languages import LANG_INFO as known_languages
-from licensedcode.spans import Span
 from licensedcode.tokenize import index_tokenizer
 from licensedcode.tokenize import index_tokenizer_with_stopwords
-from licensedcode.tokenize import key_phrase_tokenizer
-from licensedcode.tokenize import KEY_PHRASE_OPEN
-from licensedcode.tokenize import KEY_PHRASE_CLOSE
 from licensedcode.tokenize import query_lines
 from scancode.api import SCANCODE_LICENSEDB_URL
 from scancode.api import SCANCODE_LICENSE_URL
@@ -2209,6 +2206,7 @@ class Rule(BasicRule):
         Return a list of Spans marking key phrases token positions of that must
         be present for this rule to be matched.
         """
+        from licensedcode.required_phrases import get_key_phrase_spans
         if self.is_from_license:
             return []
         try:
@@ -2844,83 +2842,23 @@ def find_rule_base_location(name_prefix, rules_directory=rules_data_dir):
         idx += 1
 
 
-def get_key_phrase_spans(text):
+def get_rules_by_expression(rules_data_dir=rules_data_dir):
     """
-    Yield Spans of key phrase token positions found in the rule ``text``.
-    Tokens form a key phrase when enclosed in {{double curly braces}}.
-
-    For example:
-
-    >>> text = 'This is enclosed in {{double curly braces}}'
-    >>> #       0    1  2        3    4      5     6
-    >>> x = list(get_key_phrase_spans(text))
-    >>> assert x == [Span(4, 6)], x
-
-    >>> text = 'This is {{enclosed}} a  {{double curly braces}} or not'
-    >>> #       0    1    2          SW   3      4     5        6  7
-    >>> x = list(get_key_phrase_spans(text))
-    >>> assert x == [Span(2), Span(3, 5)], x
-
-    >>> text = 'This {{is}} enclosed a  {{double curly braces}} or not'
-    >>> #       0    1      2        SW   3      4     5        6  7
-    >>> x = list(get_key_phrase_spans(text))
-    >>> assert x == [Span([1]), Span([3, 4, 5])], x
-
-    >>> text = '{{AGPL-3.0  GNU Affero General Public License v3.0}}'
-    >>> #         0    1 2  3   4      5       6      7       8  9
-    >>> x = list(get_key_phrase_spans(text))
-    >>> assert x == [Span(0, 9)], x
-
-    >>> assert list(get_key_phrase_spans('{This}')) == []
-
-    >>> def check_exception(text):
-    ...     try:
-    ...         return list(get_key_phrase_spans(text))
-    ...     except InvalidRule:
-    ...         pass
-
-    >>> check_exception('This {{is')
-    >>> check_exception('This }}is')
-    >>> check_exception('{{This }}is{{')
-    >>> check_exception('This }}is{{')
-    >>> check_exception('{{}}')
-    >>> check_exception('{{This is')
-    >>> check_exception('{{This is{{')
-    >>> check_exception('{{This is{{ }}')
-    >>> check_exception('{{{{This}}}}')
-    >>> check_exception('}}This {{is}}')
-    >>> check_exception('This }} {{is}}')
-    >>> check_exception('{{This}}')
-    [Span(0)]
-    >>> check_exception('{This}')
-    []
-    >>> check_exception('{{{This}}}')
-    [Span(0)]
+    Get a dictionary (sorted by license_expression) of {license_expression: rules}
+    where `rules` is a list of all rule objects having the `license_expression`.
     """
-    ipos = 0
-    in_key_phrase = False
-    key_phrase = []
-    for token in key_phrase_tokenizer(text):
-        if token == KEY_PHRASE_OPEN:
-            if in_key_phrase:
-                raise InvalidRule('Invalid rule with nested key phrase {{ {{ braces', text)
-            in_key_phrase = True
+    rules = list(load_rules(rules_data_dir=rules_data_dir))
 
-        elif token == KEY_PHRASE_CLOSE:
-            if in_key_phrase:
-                if key_phrase:
-                    yield Span(key_phrase)
-                    key_phrase.clear()
-                else:
-                    raise InvalidRule('Invalid rule with empty key phrase {{}} braces', text)
-                in_key_phrase = False
-            else:
-                raise InvalidRule(f'Invalid rule with dangling key phrase missing closing braces', text)
-            continue
-        else:
-            if in_key_phrase:
-                key_phrase.append(ipos)
-            ipos += 1
+    rules_by_identifier = {
+        rule.identifier: rule
+        for rule in rules
+    }
 
-    if key_phrase or in_key_phrase:
-        raise InvalidRule(f'Invalid rule with dangling key phrase missing final closing braces', text)
+    rules_by_expression = defaultdict(list)
+
+    for rule in rules_by_identifier.values():
+        # Only return rules with license_expression (i.e. skip false positives)
+        if rule.license_expression:
+            rules_by_expression[rule.license_expression].append(rule)
+
+    return OrderedDict(sorted(rules_by_expression.items()))
